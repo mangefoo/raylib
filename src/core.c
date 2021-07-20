@@ -3387,6 +3387,8 @@ static bool InitGraphicsDevice(int width, int height)
     CORE.Window.prevBO = NULL;
     CORE.Window.prevFB = 0;
 
+    bool retryOpen = true;
+
 #if defined(DEFAULT_GRAPHIC_DEVICE_DRM)
     CORE.Window.fd = open(DEFAULT_GRAPHIC_DEVICE_DRM, O_RDWR);
 #else
@@ -3395,12 +3397,17 @@ static bool InitGraphicsDevice(int width, int height)
     if (-1 == CORE.Window.fd)
     {
         TRACELOG(LOG_INFO, "DISPLAY: Failed to open graphic card1, trying card0");
+retry:
         CORE.Window.fd = open("/dev/dri/card0", O_RDWR); // VideoCore IV (Raspberry Pi 1-3)
     }
 #endif
     if (-1 == CORE.Window.fd)
     {
         TRACELOG(LOG_WARNING, "DISPLAY: Failed to open graphic card");
+        if (retryOpen) {
+            retryOpen = false;
+            goto retry;
+        }
         return false;
     }
 
@@ -3408,6 +3415,10 @@ static bool InitGraphicsDevice(int width, int height)
     if (!res)
     {
         TRACELOG(LOG_WARNING, "DISPLAY: Failed get DRM resources");
+        if (retryOpen) {
+            retryOpen = false;
+            goto retry;
+        }
         return false;
     }
 
